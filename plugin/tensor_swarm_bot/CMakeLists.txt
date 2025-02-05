@@ -1,6 +1,8 @@
 # Copyright (C) 2018 deeplearningrobotics.ai
 add_library(argos_ros_bot MODULE tensor_swarm_bot.h tensor_swar_bot.cpp)
 
+link_directories("/usr/local/lib/argos3")
+
 target_link_libraries(argos_ros_bot
   argos3core_simulator
   argos3plugin_simulator_footbot

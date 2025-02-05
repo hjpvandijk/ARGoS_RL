@@ -5,14 +5,17 @@ project(tensor_swarm_bot)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 find_package(PkgConfig)
-pkg_check_modules(ARGOS REQUIRED argos3_simulator)
+#pkg_check_modules(ARGoS REQUIRED argos3)
+find_package(ARGoS REQUIRED)
 set(ARGOS_PREFIX ${ARGOS_PREFIX} CACHE INTERNAL "")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ARGOS_PREFIX}/share/argos3/cmake)
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ARGOS_PREFIX}/share/argos3/cmake)
+set(CMAKE_MODULE_PATH ${ARGOS_PREFIX}/share/argos3/cmake ${CMAKE_MODULE_PATH})
 
-include(ARGoSCheckQTOpenGL)
+
+include(FindARGoSQTOpenGL)
 
 find_package(GSL REQUIRED)
-find_package(Lua52 REQUIRED)
+find_package(Lua REQUIRED)
 
 include_directories(${catkin_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${ARGOS_INCLUDE_DIRS} ${GSL_INCLUDE_DIR} ${LUA_INCLUDE_DIR})
 

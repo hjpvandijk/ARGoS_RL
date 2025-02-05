@@ -4,6 +4,9 @@ project(tensorswarm)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native -O3 -W -Wall -Wextra -pedantic")
 
+link_directories("/usr/local/lib/argos3")
+
+
 find_package(catkin REQUIRED COMPONENTS
     std_msgs
     geometry_msgs

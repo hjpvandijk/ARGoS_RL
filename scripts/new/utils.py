@@ -26,21 +26,21 @@ from gym import spaces
 from collections import deque
 
 def sample(logits):
-    noise = tf.random_uniform(tf.shape(logits))
-    return tf.argmax(logits - tf.log(-tf.log(noise)), 1)
+    noise = tf.compat.v1.random_uniform(tf.compat.v1.shape(logits))
+    return tf.compat.v1.argmax(logits - tf.compat.v1.log(-tf.compat.v1.log(noise)), 1)
 
 def cat_entropy(logits):
-    a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
-    ea0 = tf.exp(a0)
-    z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
+    a0 = logits - tf.compat.v1.reduce_max(logits, 1, keep_dims=True)
+    ea0 = tf.compat.v1.exp(a0)
+    z0 = tf.compat.v1.reduce_sum(ea0, 1, keep_dims=True)
     p0 = ea0 / z0
-    return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+    return tf.compat.v1.reduce_sum(p0 * (tf.compat.v1.log(z0) - a0), 1)
 
 def cat_entropy_softmax(p0):
-    return - tf.reduce_sum(p0 * tf.log(p0 + 1e-6), axis = 1)
+    return - tf.compat.v1.reduce_sum(p0 * tf.compat.v1.log(p0 + 1e-6), axis = 1)
 
 def mse(pred, target):
-    return tf.square(pred-target)/2.
+    return tf.compat.v1.square(pred-target)/2.
 
 def ortho_init(scale=1.0):
     def _ortho_init(shape, dtype, partition_info=None):
@@ -73,102 +73,102 @@ def conv(x, scope, nf, rf, stride, pad='VALID', init_scale=1.0, data_format='NHW
     bias_var_shape = [nf] if one_dim_bias else [1, nf, 1, 1]
     nin = x.get_shape()[channel_ax].value
     wshape = [rf, rf, nin, nf]
-    with tf.variable_scope(scope):
-        w = tf.get_variable("w", wshape, initializer=ortho_init(init_scale))
-        b = tf.get_variable("b", bias_var_shape, initializer=tf.constant_initializer(0.0))
+    with tf.compat.v1.variable_scope(scope):
+        w = tf.compat.v1.get_variable("w", wshape, initializer=ortho_init(init_scale))
+        b = tf.compat.v1.get_variable("b", bias_var_shape, initializer=tf.compat.v1.constant_initializer(0.0))
         if not one_dim_bias and data_format == 'NHWC':
-            b = tf.reshape(b, bshape)
-        return b + tf.nn.conv2d(x, w, strides=strides, padding=pad, data_format=data_format)
+            b = tf.compat.v1.reshape(b, bshape)
+        return b + tf.compat.v1.nn.conv2d(x, w, strides=strides, padding=pad, data_format=data_format)
 
 def fc(x, scope, nh, init_scale=1.0, init_bias=0.0):
-    with tf.variable_scope(scope):
-        nin = x.get_shape()[1].value
-        w = tf.get_variable("w", [nin, nh], initializer=ortho_init(init_scale))
-        b = tf.get_variable("b", [nh], initializer=tf.constant_initializer(init_bias))
-        return tf.matmul(x, w)+b
+    with tf.compat.v1.variable_scope(scope):
+        nin = x.get_shape()[1]#.value
+        w = tf.compat.v1.get_variable("w", [nin, nh], initializer=ortho_init(init_scale))
+        b = tf.compat.v1.get_variable("b", [nh], initializer=tf.compat.v1.constant_initializer(init_bias))
+        return tf.compat.v1.matmul(x, w)+b
 
 def batch_to_seq(h, nbatch, nsteps, flat=False):
     if flat:
-        h = tf.reshape(h, [nbatch, nsteps])
+        h = tf.compat.v1.reshape(h, [nbatch, nsteps])
     else:
-        h = tf.reshape(h, [nbatch, nsteps, -1])
-    return [tf.squeeze(v, [1]) for v in tf.split(axis=1, num_or_size_splits=nsteps, value=h)]
+        h = tf.compat.v1.reshape(h, [nbatch, nsteps, -1])
+    return [tf.compat.v1.squeeze(v, [1]) for v in tf.compat.v1.split(axis=1, num_or_size_splits=nsteps, value=h)]
 
 def seq_to_batch(h, flat = False):
     shape = h[0].get_shape().as_list()
     if not flat:
         assert(len(shape) > 1)
         nh = h[0].get_shape()[-1].value
-        return tf.reshape(tf.concat(axis=1, values=h), [-1, nh])
+        return tf.compat.v1.reshape(tf.compat.v1.concat(axis=1, values=h), [-1, nh])
     else:
-        return tf.reshape(tf.stack(values=h, axis=1), [-1])
+        return tf.compat.v1.reshape(tf.compat.v1.stack(values=h, axis=1), [-1])
 
 def lstm(xs, ms, s, scope, nh, init_scale=1.0):
     nbatch, nin = [v.value for v in xs[0].get_shape()]
     nsteps = len(xs)
-    with tf.variable_scope(scope):
-        wx = tf.get_variable("wx", [nin, nh*4], initializer=ortho_init(init_scale))
-        wh = tf.get_variable("wh", [nh, nh*4], initializer=ortho_init(init_scale))
-        b = tf.get_variable("b", [nh*4], initializer=tf.constant_initializer(0.0))
+    with tf.compat.v1.variable_scope(scope):
+        wx = tf.compat.v1.get_variable("wx", [nin, nh*4], initializer=ortho_init(init_scale))
+        wh = tf.compat.v1.get_variable("wh", [nh, nh*4], initializer=ortho_init(init_scale))
+        b = tf.compat.v1.get_variable("b", [nh*4], initializer=tf.compat.v1.constant_initializer(0.0))
 
-    c, h = tf.split(axis=1, num_or_size_splits=2, value=s)
+    c, h = tf.compat.v1.split(axis=1, num_or_size_splits=2, value=s)
     for idx, (x, m) in enumerate(zip(xs, ms)):
         c = c*(1-m)
         h = h*(1-m)
-        z = tf.matmul(x, wx) + tf.matmul(h, wh) + b
-        i, f, o, u = tf.split(axis=1, num_or_size_splits=4, value=z)
-        i = tf.nn.sigmoid(i)
-        f = tf.nn.sigmoid(f)
-        o = tf.nn.sigmoid(o)
-        u = tf.tanh(u)
+        z = tf.compat.v1.matmul(x, wx) + tf.compat.v1.matmul(h, wh) + b
+        i, f, o, u = tf.compat.v1.split(axis=1, num_or_size_splits=4, value=z)
+        i = tf.compat.v1.nn.sigmoid(i)
+        f = tf.compat.v1.nn.sigmoid(f)
+        o = tf.compat.v1.nn.sigmoid(o)
+        u = tf.compat.v1.tanh(u)
         c = f*c + i*u
-        h = o*tf.tanh(c)
+        h = o*tf.compat.v1.tanh(c)
         xs[idx] = h
-    s = tf.concat(axis=1, values=[c, h])
+    s = tf.compat.v1.concat(axis=1, values=[c, h])
     return xs, s
 
 def _ln(x, g, b, e=1e-5, axes=[1]):
-    u, s = tf.nn.moments(x, axes=axes, keep_dims=True)
-    x = (x-u)/tf.sqrt(s+e)
+    u, s = tf.compat.v1.nn.moments(x, axes=axes, keep_dims=True)
+    x = (x-u)/tf.compat.v1.sqrt(s+e)
     x = x*g+b
     return x
 
 def lnlstm(xs, ms, s, scope, nh, init_scale=1.0):
     nbatch, nin = [v.value for v in xs[0].get_shape()]
     nsteps = len(xs)
-    with tf.variable_scope(scope):
-        wx = tf.get_variable("wx", [nin, nh*4], initializer=ortho_init(init_scale))
-        gx = tf.get_variable("gx", [nh*4], initializer=tf.constant_initializer(1.0))
-        bx = tf.get_variable("bx", [nh*4], initializer=tf.constant_initializer(0.0))
+    with tf.compat.v1.variable_scope(scope):
+        wx = tf.compat.v1.get_variable("wx", [nin, nh*4], initializer=ortho_init(init_scale))
+        gx = tf.compat.v1.get_variable("gx", [nh*4], initializer=tf.compat.v1.constant_initializer(1.0))
+        bx = tf.compat.v1.get_variable("bx", [nh*4], initializer=tf.compat.v1.constant_initializer(0.0))
 
-        wh = tf.get_variable("wh", [nh, nh*4], initializer=ortho_init(init_scale))
-        gh = tf.get_variable("gh", [nh*4], initializer=tf.constant_initializer(1.0))
-        bh = tf.get_variable("bh", [nh*4], initializer=tf.constant_initializer(0.0))
+        wh = tf.compat.v1.get_variable("wh", [nh, nh*4], initializer=ortho_init(init_scale))
+        gh = tf.compat.v1.get_variable("gh", [nh*4], initializer=tf.compat.v1.constant_initializer(1.0))
+        bh = tf.compat.v1.get_variable("bh", [nh*4], initializer=tf.compat.v1.constant_initializer(0.0))
 
-        b = tf.get_variable("b", [nh*4], initializer=tf.constant_initializer(0.0))
+        b = tf.compat.v1.get_variable("b", [nh*4], initializer=tf.compat.v1.constant_initializer(0.0))
 
-        gc = tf.get_variable("gc", [nh], initializer=tf.constant_initializer(1.0))
-        bc = tf.get_variable("bc", [nh], initializer=tf.constant_initializer(0.0))
+        gc = tf.compat.v1.get_variable("gc", [nh], initializer=tf.compat.v1.constant_initializer(1.0))
+        bc = tf.compat.v1.get_variable("bc", [nh], initializer=tf.compat.v1.constant_initializer(0.0))
 
-    c, h = tf.split(axis=1, num_or_size_splits=2, value=s)
+    c, h = tf.compat.v1.split(axis=1, num_or_size_splits=2, value=s)
     for idx, (x, m) in enumerate(zip(xs, ms)):
         c = c*(1-m)
         h = h*(1-m)
-        z = _ln(tf.matmul(x, wx), gx, bx) + _ln(tf.matmul(h, wh), gh, bh) + b
-        i, f, o, u = tf.split(axis=1, num_or_size_splits=4, value=z)
-        i = tf.nn.sigmoid(i)
-        f = tf.nn.sigmoid(f)
-        o = tf.nn.sigmoid(o)
-        u = tf.tanh(u)
+        z = _ln(tf.compat.v1.matmul(x, wx), gx, bx) + _ln(tf.compat.v1.matmul(h, wh), gh, bh) + b
+        i, f, o, u = tf.compat.v1.split(axis=1, num_or_size_splits=4, value=z)
+        i = tf.compat.v1.nn.sigmoid(i)
+        f = tf.compat.v1.nn.sigmoid(f)
+        o = tf.compat.v1.nn.sigmoid(o)
+        u = tf.compat.v1.tanh(u)
         c = f*c + i*u
-        h = o*tf.tanh(_ln(c, gc, bc))
+        h = o*tf.compat.v1.tanh(_ln(c, gc, bc))
         xs[idx] = h
-    s = tf.concat(axis=1, values=[c, h])
+    s = tf.compat.v1.concat(axis=1, values=[c, h])
     return xs, s
 
 def conv_to_fc(x):
     nh = np.prod([v.value for v in x.get_shape()[1:]])
-    x = tf.reshape(x, [-1, nh])
+    x = tf.compat.v1.reshape(x, [-1, nh])
     return x
 
 def discount_with_dones(rewards, dones, gamma):
@@ -180,8 +180,8 @@ def discount_with_dones(rewards, dones, gamma):
     return discounted[::-1]
 
 def find_trainable_variables(key):
-    with tf.variable_scope(key):
-        return tf.trainable_variables()
+    with tf.compat.v1.variable_scope(key):
+        return tf.compat.v1.trainable_variables()
 
 def make_path(f):
     return os.makedirs(f, exist_ok=True)
@@ -279,8 +279,8 @@ class EpisodeStats:
 def get_by_index(x, idx):
     assert(len(x.get_shape()) == 2)
     assert(len(idx.get_shape()) == 1)
-    idx_flattened = tf.range(0, x.shape[0]) * x.shape[1] + idx
-    y = tf.gather(tf.reshape(x, [-1]),  # flatten input
+    idx_flattened = tf.compat.v1.range(0, x.shape[0]) * x.shape[1] + idx
+    y = tf.compat.v1.gather(tf.compat.v1.reshape(x, [-1]),  # flatten input
                   idx_flattened)  # use flattened indices
     return y
 
@@ -291,7 +291,7 @@ def check_shape(ts,shapes):
         i += 1
 
 def avg_norm(t):
-    return tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(t), axis=-1)))
+    return tf.compat.v1.reduce_mean(tf.compat.v1.sqrt(tf.compat.v1.reduce_sum(tf.compat.v1.square(t), axis=-1)))
 
 def gradient_add(g1, g2, param):
     print([g1, g2, param.name])
@@ -304,7 +304,7 @@ def gradient_add(g1, g2, param):
         return g1 + g2
 
 def q_explained_variance(qpred, q):
-    _, vary = tf.nn.moments(q, axes=[0, 1])
-    _, varpred = tf.nn.moments(q - qpred, axes=[0, 1])
+    _, vary = tf.compat.v1.nn.moments(q, axes=[0, 1])
+    _, varpred = tf.compat.v1.nn.moments(q - qpred, axes=[0, 1])
     check_shape([vary, varpred], [[]] * 2)
     return 1.0 - (varpred / vary)

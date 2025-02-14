@@ -5,6 +5,7 @@
 #include <argos3/core/utility/math/vector2.h>
 
 #include "ros_helpers.h"
+#include <argos3/core/utility/logging/argos_log.h>
 
 
 using namespace tensorswarm;
@@ -21,6 +22,16 @@ void CTensorSwarmBot::Init(TConfigurationNode& t_node) {
   m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
   m_pcWheelsSensor = GetSensor<CCI_DifferentialSteeringSensor>("differential_steering");
   m_pcLaser = GetSensor<CCI_FootBotLidarSensor>("footbot_lidar");
+  auto map_width_with_noise_room = 21;
+  auto map_height_with_noise_room = 11;
+
+  auto config_file = "src/tensorswarm/plugin/Thesis_ARGoS/implementation_and_examples/agent_implementation/config.yaml";
+//  auto config_file = "agent_implementation/config.yaml";
+
+  agentObject = std::make_shared<Agent>(Agent(this->m_strId, std::max(map_width_with_noise_room, map_height_with_noise_room), config_file));
+  argos::LOG << "WIFI RANGE: " << agentObject->config.WIFI_RANGE_M << std::endl;
+
+
 }
 
 void CTensorSwarmBot::ControlStep() {

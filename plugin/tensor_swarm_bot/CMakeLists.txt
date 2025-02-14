@@ -2,11 +2,14 @@
 add_library(argos_ros_bot MODULE tensor_swarm_bot.h tensor_swar_bot.cpp)
 
 link_directories("/usr/local/lib/argos3")
+include_directories(${CMAKE_SOURCE_DIR}/tensorswarm/plugin/Thesis_ARGoS/implementation_and_examples)
+
 
 target_link_libraries(argos_ros_bot
   argos3core_simulator
   argos3plugin_simulator_footbot
   argos3plugin_simulator_genericrobot
+  agent_implementation
   /opt/ros/$ENV{ROS_DISTRO}/lib/libroscpp.so)
 
 add_library(argos_loop_function MODULE

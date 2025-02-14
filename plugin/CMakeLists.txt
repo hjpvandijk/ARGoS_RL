@@ -22,3 +22,5 @@ include_directories(${catkin_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${ARGOS_INCLUDE_D
 link_directories(${ARGOS_LIBRARY_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/controllers)
 add_subdirectory(tensor_swarm_bot)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Thesis_ARGoS/implementation_and_examples)
+add_subdirectory(Thesis_ARGoS/implementation_and_examples)

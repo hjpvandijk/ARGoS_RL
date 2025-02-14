@@ -1,0 +1,512 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+    <!-- ************************* -->
+    <!-- * General configuration * -->
+    <!-- ************************* -->
+    <framework>
+        <!--
+            System configuration:
+            - threads: the number of slave threads to parallelize the
+              computation. For less than 100 robots thread management is not
+              beneficial, so here we set it to 0. When set to 0, it means that
+              the computation is not parallelized: the main thread does
+              everything.
+        -->
+        <system threads="0"/>
+        <!--
+            Experiment configuration:
+            - length: total experiment time in seconds (0 means the experiment
+              has no time limit)
+            - ticks_per_second: number of ticks per second (int value)
+            - random_seed: seed of the main random number generator. If unset
+              or set to zero, this value is taken from the clock and a warning
+              message is displayed.
+        -->
+        <experiment length="0"
+                    ticks_per_second="30"
+                    random_seed="124"/>
+
+        <log file="output.log" />
+        <logerr file="error.log" />
+    </framework>
+
+    <!-- *************** -->
+    <!-- * Controllers * -->
+    <!-- *************** -->
+    <controllers>
+
+        <!--
+             Here you list the controllers to be used in the experiment.
+             The XML tag is set by the REGISTER_CONTROLLER(class, "tag") macro.
+             You find it in the .cpp file of your controller.
+             For this example, the macro is called in
+             controllers/footbot_diffusion.cpp:100.
+        -->
+
+        <!--
+            The attributes are:
+            - id: a unique a identifier for this controller, to be used in the
+              subsequent <arena> section to say which robots use which
+              controller
+            - library: the path to the compiled library containing you
+              controller.
+        -->
+        <pipuck_hugo_controller id="ppc"
+                                library="libpipuck_hugo">
+            <!--
+                The <actuators> section contains a list of the actuatocdrs used by
+                this controller.
+                If you forget a to mention an actuator here and then request it
+                in the controller, an error occurs.
+                For a list of the possible actuators, type at the command prompt:
+                $ launch_argos -q actuators
+
+                Multiple implementations of an actuator are possible. To
+                identify which one you want to use, pass it in the
+                'implementation' attribute below. When you type the 'argos3 -q'
+                command, the implementation is in the square brackets following
+                the name of the device:
+
+                $ argos3 -q actuators
+                ...
+                footbot_wheels [default]
+                ...
+            -->
+            <actuators>
+                <!--                <differential_steering implementation="default" />-->
+                <!--                <footbot_distance_scanner implementation="default" />-->
+                <pipuck_differential_drive implementation="default"/>
+                <simple_radios implementation="default"/>
+                <!--                <range_and_bearing implementation="default" medium="rab"/>-->
+            </actuators>
+            <!--
+                The <sensors> section contains a list of the sensors used by
+                this controller.
+                If you forget a to mention a sensor here and then request it in
+                the controller, an error occurs.
+                For a list of the possible sensors, type at the command prompt:
+                $ argos3 -q sensors
+            -->
+            <sensors>
+                <!--                <footbot_proximity implementation="default" show_rays="true" />-->
+                <!--                <footbot_distance_scanner implementation="rot_z_only" show_rays="false" />-->
+                <pipuck_rangefinders implementation="default" show_rays="true"/>
+                <simple_radios implementation="default" show_rays="false"/>
+                <!--                <range_and_bearing implementation="default" medium="rab"/>-->
+                <positioning implementation="default"/>
+            </sensors>
+            <!--     actual map width in m, actual mad height in m      -->
+            <params map_width ="20" map_height ="10.2" unreachable_area = "35.529569" config="src/tensorswarm/plugin/Thesis_ARGoS/implementation_and_examples/agent_implementation/config.yaml"/>
+        </pipuck_hugo_controller>
+
+<!--        <tensor_swarm_bot_controller id="argos_ros_bot" library="libargos_ros_bot.so">-->
+<!--            <actuators>-->
+<!--                <differential_steering implementation="default"/>-->
+<!--            </actuators>-->
+<!--            <sensors>-->
+<!--                <differential_steering implementation="default"/>-->
+<!--                <footbot_lidar implementation="default" show_rays="false"/>-->
+<!--            </sensors>-->
+<!--            <params stopWithoutSubscriberCount="10" />-->
+<!--        </tensor_swarm_bot_controller>-->
+
+    </controllers>
+
+    <!-- ****************** -->
+    <!-- * Loop functions * -->
+    <!-- ****************** -->
+    <!--    <loop_functions library="build/loop_functions/trajectory_loop_functions_pipuck/libtrajectory_loop_functions_pipuck"-->
+    <!--                    label="trajectory_loop_functions_pipuck" />-->
+    <!--    <loop_functions library="build/loop_functions/coverage_loop_functions_pipuck/libcoverage_loop_functions_pipuck"-->
+    <!--                    label="coverage_loop_functions_pipuck"/>-->
+    <loop_functions
+            library="libagent_vision_loop_functions_pipuck"
+            label="agent_vision_loop_functions_pipuck"/>
+<!--    <loop_functions library="libargos_loop_function.so" label="ROSServiceLoopFunction" />-->
+
+    <!--    <loop_functions library="build/loop_functions/radios_loop_functions/libradios_loop_functions"-->
+    <!--                        label="radios_loop_functions" />-->
+    <!--    <loop_functions library="build/loop_functions/position_loop_functions/libposition_loop_functions"-->
+    <!--                        label="position_loop_functions" />-->
+
+
+    <!-- *********************** -->
+    <!-- * Arena configuration * -->
+    <!-- *********************** -->
+    <!--
+        Here you place all the objects in the arena.
+        All linear measures are expressed in meters.
+        Angles are expressed in degrees.
+        The 'size' attribute contains the size of the arena around the
+        origin.
+        To get help about which entities are available, type at the command
+        prompt:
+
+        $ argos3 -q entities
+
+        and to get help about a specific entity (for instance, the box)
+
+        $ argos3 -q box
+    -->
+    <arena size="10.2, 20, 1" center="0,0,0.5">
+
+
+        <box id="box_40" size="0.76,2.11,0.5" movable="false">
+            <body position="-3.96,6.195,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_41" size="0.75,1.42,0.5" movable="false">
+            <body position="-0.205,8.005,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_42" size="0.13,2.7,0.5" movable="false">
+            <body position="-3.69,4.51,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_43" size="0.14,0.695,0.5" movable="false">
+            <body position="-3.855,4.1175,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_44" size="0.615,0.28,0.5" movable="false">
+            <body position="-4.4825,4.32,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_45" size="0.135,2.32,0.5" movable="false">
+            <body position="-0.9275,8.745,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_46" size="0.145,1.73,0.5" movable="false">
+            <body position="-0.135,7.6475,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_47" size="0.425,0.125,0.5" movable="false">
+            <body position="2.0225,7.6525,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_48" size="0.155,2.215,0.5" movable="false">
+            <body position="2.0325,8.7825,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_49" size="0.73,1.4,0.5" movable="false">
+            <body position="4.275,8.035,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_410" size="0.135,1.655,0.5" movable="false">
+            <body position="4.1525,7.6475,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_411" size="1.485,2.185,0.5" movable="false">
+            <body position="3.9375,5.1325,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_412" size="0.145,10.245,0.5" movable="false">
+            <body position="0.0225,9.9225,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_413" size="1.45,2.21,0.5" movable="false">
+            <body position="0.79,3.49,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_414" size="1.465,2.155,0.5" movable="false">
+            <body position="3.9225,1.8675,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_415" size="0.12,2.26,0.5" movable="false">
+            <body position="-2.4,3.44,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_416" size="2.02,0.44,0.5" movable="false">
+            <body position="-2.665,3.44,0" orientation="-90.0,0,0"/>
+        </box>
+
+        <cylinder id="circle_30" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-3.915,5.185,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_31" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-0.235,8.95,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_32" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="4.435,8.93,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_33" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="4.315,6.205,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_34" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="2.415,5.145,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_35" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="1.915,3.87,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_36" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-0.29,3.855,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_37" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.475,4.095,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_38" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="4.315,4.045,0" orientation="0,0,0"/>
+        </cylinder>
+
+
+
+        <cylinder id="circle_39" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="0.78,2.065,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_40" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="2.425,1.89,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_42" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="4.315,2.97,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_43" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="4.295,0.805,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_44" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.475,1.54,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_45" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.48,0.705,0" orientation="0,0,0"/>
+        </cylinder>
+        <box id="box_0" size="0.135,0.345,0.5" movable="false">
+            <body position="-3.8625,2.7675,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_1" size="0.13,1.125,0.5" movable="false">
+            <body position="-4.4725,2.785,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_2" size="0.14,1.35,0.5" movable="false">
+            <body position="-3.86,1.075,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_3" size="0.13,0.245,0.5" movable="false">
+            <body position="-2.405,1.1075,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_4" size="0.145,2.59,0.5" movable="false">
+            <body position="-3.745,1.1125,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_5" size="0.605,0.645,0.5" movable="false">
+            <body position="-4.4825,1.1175,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_6" size="0.125,1.135,0.5" movable="false">
+            <body position="-4.4725,-0.5875,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_7" size="0.14,0.335,0.5" movable="false">
+            <body position="-3.86,-0.5875,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_8" size="0.6,0.355,0.5" movable="false">
+            <body position="-4.485,-2.1325,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_9" size="0.125,0.63,0.5" movable="false">
+            <body position="-3.8625,-1.935,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_10" size="0.12,2.175,0.5" movable="false">
+            <body position="-2.4,-1.1725,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_11" size="2.065,0.425,0.5" movable="false">
+            <body position="-2.6725,-1.2325,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_12" size="0.14,2.825,0.5" movable="false">
+            <body position="-3.6325,-2.275,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_13" size="0.125,1.86,0.5" movable="false">
+            <body position="-0.2,-2.2675,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_14" size="0.28,0.135,0.5" movable="false">
+            <body position="1.955,-2.2625,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_15" size="4.87,0.68,0.5" movable="false">
+            <body position="4.64,-3.08,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_16" size="0.125,1.655,0.5" movable="false">
+            <body position="4.1575,-5.5325,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_17" size="4.52,1.7,0.5" movable="false">
+            <body position="-3.025,-6.1,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_18" size="0.13,0.195,0.5" movable="false">
+            <body position="2.1475,-5.54,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_19" size="1.465,0.735,0.5" movable="false">
+            <body position="3.5925,-8.1375,0" orientation="-0.0,0,0"/>
+        </box>
+        <box id="box_20" size="1.69,2.97,0.5" movable="false">
+            <body position="0.525,-9.05,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_21" size="7.615,0.125,0.5" movable="false">
+            <body position="2.0275,-6.0975,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_22" size="7.57,0.165,0.5" movable="false">
+            <body position="-0.9425,-6.115,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_23" size="19.925,0.15,0.5" movable="false">
+            <body position="5.025,0.0275,0" orientation="90.0,0,0"/>
+        </box>
+        <box id="box_24" size="19.845,0.135,0.5" movable="false">
+            <body position="-5.0775,-0.0725,0" orientation="-90.0,0,0"/>
+        </box>
+        <box id="box_25" size="0.15,10.03,0.5" movable="false">
+            <body position="-0.055,-9.925,0" orientation="-90.0,0,0"/>
+        </box>
+        <cylinder id="circle_6" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="1.125,-4.1,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_7" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-0.06,-4.1,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_8" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-0.095,-6.16,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_9" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="1.13,-6.17,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_10" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-1.9,-4.38,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_11" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-1.9,-5.225,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_12" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-1.925,-6.085,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_13" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-1.905,-6.93,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_14" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-1.91,-7.815,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_15" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.125,-4.37,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_16" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.125,-5.235,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_17" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.145,-6.095,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_18" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.125,-6.945,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_19" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-4.125,-7.805,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_20" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="3.875,-5.97,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_21" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="4.68,-5.975,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_22" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="3.58,-8.92,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_23" radius="0.3" height="0.5" temperature="0" movable="false">
+            <body position="-2.97,-8.595,0" orientation="0,0,0"/>
+        </cylinder>
+        <cylinder id="circle_24" radius="0.331436268383531" height="0.5" temperature="0" movable="false">
+            <body position="-4.475,-1.85,0" orientation="0,0,0"/>
+        </cylinder>
+
+        <cylinder id="circle_51" radius="0.9736657537368765" height="0.5" temperature="0" movable="false">
+            <body position="0.535,-5.16,0" orientation="0,0,0"/>
+        </cylinder>
+
+<!--        <distribute>-->
+<!--            <position method="uniform" min="-10.0,-10,0" max="10.0,10.0,0"/>-->
+<!--            <orientation method="constant" values="0,0,0"/>-->
+<!--            <entity quantity="5" max_trials="100">-->
+<!--                <foot-bot id="bot">-->
+<!--                    <controller config="argos_ros_bot"/>-->
+<!--                </foot-bot>-->
+<!--            </entity>-->
+<!--        </distribute>-->
+
+        <pipuck id="pipuck1" wifi_medium="wifi">
+            <body position="-4.5,9,0" orientation="90,0,0"/>
+            <controller config="ppc"/>
+            <devices>
+
+            </devices>
+        </pipuck>
+
+<!--        <pipuck id="pipuck2" wifi_medium="wifi">-->
+<!--            <body position="-4.5,8.5,0" orientation="-90,0,0"/>-->
+<!--            <controller config="ppc"/>-->
+<!--        </pipuck>-->
+
+
+
+<!--        <pipuck id="pipuck3" wifi_medium="wifi">-->
+<!--            <body position="-4.5,8,0" orientation="0,0,0"/>-->
+<!--            <controller config="ppc"/>-->
+<!--        </pipuck>-->
+
+<!--        <pipuck id="pipuck4" wifi_medium="wifi">-->
+<!--            <body position="-4,9,0" orientation="0,0,0"/>-->
+<!--            <controller config="ppc"/>-->
+<!--        </pipuck>-->
+
+<!--        <pipuck id="pipuck5" wifi_medium="wifi">-->
+<!--            <body position="-4,8.5,0" orientation="0,0,0"/>-->
+<!--            <controller config="ppc"/>-->
+<!--        </pipuck>-->
+<!--        <pipuck id="pipuck6" wifi_medium="wifi">-->
+<!--            <body position="-4,8,0" orientation="0,0,0"/>-->
+<!--            <controller config="ppc"/>-->
+<!--        </pipuck>-->
+
+
+    </arena>
+
+
+    <!-- ******************* -->
+    <!-- * Physics engines * -->
+    <!-- ******************* -->
+    <!--
+        In ARGoS, multiple physics engines can run at the same time.
+        In this section you say which engines to use for the experiment.
+        To know which engines are available, type at the command prompt:
+
+        $ argos3 -q physics_engines
+    -->
+    <physics_engines>
+        <!--
+            Use a 2D dynamics engine.
+        -->
+        <dynamics2d id="dyn2d"/>
+        <!--        <dynamics3d id="dyn3d" iterations="1" />-->
+    </physics_engines>
+
+    <!-- ********* -->
+    <!-- * Media * -->
+    <!-- ********* -->
+    <!--
+        Here you specify the media in use. Media allow robots to communicate.
+        In this experiment, robots do not communicate, so no media are
+        specified.
+        To know which media are available, type at the command prompt:
+
+        $ argos3 -q media
+    -->
+    <media>
+        <!--        <range_and_bearing id="rab" />-->
+        <simple_radio id="wifi" index="grid" grid_size="50,50,20"/>
+    </media>
+
+    <!-- ****************** -->
+    <!-- * Visualization * -->
+    <!-- ****************** -->
+    <!--
+        Here you specify which visualization to use.
+        You can also not specify a visualization at all, in which case ARGoS
+        will run without showing anything.
+        Having no visualization is useful when you run ARGoS in a batch of
+        experiments to collect statistics.
+        To know which visualizations are available, type at the command
+        prompt:
+
+        $ argos3 -q visualizations
+    -->
+    <visualization>
+        <qt-opengl autoplay="false">
+            <user_functions
+                    library="libagent_vision_loop_functions_pipuck"
+                    label="agent_vision_qtuser_functions_pipuck"/>
+            <camera>
+                <placements>
+                    <placement index="0" position="0,0,60" look_at="0,0,0"
+                               up="0.721522,-3.4075e-17,0.692391" lens_focal_length="100"/>
+                </placements>
+            </camera>
+            <!--            <frame_grabbing directory="experiment_results/office_config"-->
+            <!--                            base_name="frame"-->
+            <!--                            format="png"-->
+            <!--                            quality="100"-->
+            <!--                            headless_grabbing="true"-->
+            <!--                            headless_frame_size="1800x960\"-->
+            <!--                            headless_frame_rate="20"/>-->
+        </qt-opengl>
+    </visualization>
+
+</argos-configuration>

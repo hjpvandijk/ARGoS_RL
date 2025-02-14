@@ -14,6 +14,7 @@
 #include <geometry_msgs/Pose2D.h>
 
 #include "tensorswarm/AIService.h"
+#include "agent_implementation/agent.h"
 
 using namespace argos;
 
@@ -59,6 +60,9 @@ public:
 
   bool arrived() {return m_arrived;}
   void setArrived() {m_arrived = true;}
+
+    std::shared_ptr<Agent> agentObject;
+
 
 private:
 

@@ -1,0 +1,4 @@
+[submodule "plugin/Thesis_ARGoS"]
+	path = plugin/Thesis_ARGoS
+	url = git@github.com:hjpvandijk/Thesis_ARGoS.git
+	branch = main

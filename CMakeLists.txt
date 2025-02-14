@@ -19,10 +19,13 @@ add_message_files(
     Observation.msg
     LaserRay.msg
     LaserScan.msg
+    Map.msg
+    State.msg
 )
 add_service_files(
     FILES
     AIService.srv
+    AICLAREService.srv
 )
 
 generate_messages(

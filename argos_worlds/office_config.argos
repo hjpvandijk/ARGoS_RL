@@ -52,8 +52,8 @@
             - library: the path to the compiled library containing you
               controller.
         -->
-        <pipuck_hugo_controller id="ppc"
-                                library="libpipuck_hugo">
+        <tensor_swarm_CLARE_bot_controller id="ppc"
+                                library="libargos_CLARE_ros_bot">
             <!--
                 The <actuators> section contains a list of the actuatocdrs used by
                 this controller.
@@ -98,9 +98,9 @@
             </sensors>
             <!--     actual map width in m, actual mad height in m      -->
             <params map_width ="20" map_height ="10.2" unreachable_area = "35.529569" config="src/tensorswarm/plugin/Thesis_ARGoS/implementation_and_examples/agent_implementation/config.yaml"/>
-        </pipuck_hugo_controller>
+        </tensor_swarm_CLARE_bot_controller>
 
-<!--        <tensor_swarm_bot_controller id="argos_ros_bot" library="libargos_ros_bot.so">-->
+<!--        <tensor_swarm_bot_controller id="argos_CLARE_ros_bot" library="libargos_CLARE_ros_bot.so">-->
 <!--            <actuators>-->
 <!--                <differential_steering implementation="default"/>-->
 <!--            </actuators>-->
@@ -120,11 +120,11 @@
     <!--                    label="trajectory_loop_functions_pipuck" />-->
     <!--    <loop_functions library="build/loop_functions/coverage_loop_functions_pipuck/libcoverage_loop_functions_pipuck"-->
     <!--                    label="coverage_loop_functions_pipuck"/>-->
-    <loop_functions
-            library="libagent_vision_loop_functions_pipuck"
-            label="agent_vision_loop_functions_pipuck"/>
-<!--    <loop_functions library="libargos_loop_function.so" label="ROSServiceLoopFunction" />-->
-
+<!--    <loop_functions-->
+<!--            library="libagent_vision_loop_functions_pipuck"-->
+<!--            label="agent_vision_loop_functions_pipuck"/>-->
+    <loop_functions library="libargos_loop_function_CLARE.so" label="ROSServiceLoopFunctionCLARE" />
+d
     <!--    <loop_functions library="build/loop_functions/radios_loop_functions/libradios_loop_functions"-->
     <!--                        label="radios_loop_functions" />-->
     <!--    <loop_functions library="build/loop_functions/position_loop_functions/libposition_loop_functions"-->
@@ -397,18 +397,28 @@
 <!--            <orientation method="constant" values="0,0,0"/>-->
 <!--            <entity quantity="5" max_trials="100">-->
 <!--                <foot-bot id="bot">-->
-<!--                    <controller config="argos_ros_bot"/>-->
+<!--                    <controller config="argos_CLARE_ros_bot"/>-->
 <!--                </foot-bot>-->
 <!--            </entity>-->
 <!--        </distribute>-->
 
-        <pipuck id="pipuck1" wifi_medium="wifi">
-            <body position="-4.5,9,0" orientation="90,0,0"/>
-            <controller config="ppc"/>
-            <devices>
 
-            </devices>
-        </pipuck>
+        <distribute>
+            <position method="uniform" min="-5.0,-10,0" max="5.0,10.0,0"/>
+            <orientation method="constant" values="0,0,0"/>
+            <entity quantity="5" max_trials="100">
+                <pipuck id="bot">
+                    <controller config="ppc"/>
+                </pipuck>
+            </entity>
+        </distribute>
+<!--        <pipuck id="pipuck1" wifi_medium="wifi">-->
+<!--            <body position="-4.5,9,0" orientation="90,0,0"/>-->
+<!--            <controller config="ppc"/>-->
+<!--            <devices>-->
+
+<!--            </devices>-->
+<!--        </pipuck>-->
 
 <!--        <pipuck id="pipuck2" wifi_medium="wifi">-->
 <!--            <body position="-4.5,8.5,0" orientation="-90,0,0"/>-->
@@ -490,22 +500,22 @@
     -->
     <visualization>
         <qt-opengl autoplay="false">
-            <user_functions
-                    library="libagent_vision_loop_functions_pipuck"
-                    label="agent_vision_qtuser_functions_pipuck"/>
+<!--            <user_functions-->
+<!--                    library="libagent_vision_loop_functions_pipuck"-->
+<!--                    label="agent_vision_qtuser_functions_pipuck"/>-->
             <camera>
                 <placements>
                     <placement index="0" position="0,0,60" look_at="0,0,0"
                                up="0.721522,-3.4075e-17,0.692391" lens_focal_length="100"/>
                 </placements>
             </camera>
-            <!--            <frame_grabbing directory="experiment_results/office_config"-->
-            <!--                            base_name="frame"-->
-            <!--                            format="png"-->
-            <!--                            quality="100"-->
-            <!--                            headless_grabbing="true"-->
-            <!--                            headless_frame_size="1800x960\"-->
-            <!--                            headless_frame_rate="20"/>-->
+<!--                        <frame_grabbing directory="src/tensorswarm/plugin/Thesis_ARGoS/implementation_and_examples/experiment_results/office_config"-->
+<!--                                        base_name="frame"-->
+<!--                                        format="png"-->
+<!--                                        quality="100"-->
+<!--                                        headless_grabbing="true"-->
+<!--                                        headless_frame_size="1800x960\"-->
+<!--                                        headless_frame_rate="99999"/>-->
         </qt-opengl>
     </visualization>
 

@@ -20,6 +20,7 @@ CTensorSwarmCLAREBot::CTensorSwarmCLAREBot() :
 
 void CTensorSwarmCLAREBot::Init(TConfigurationNode& t_node) {
     m_pcWheels = GetActuator<CCI_PiPuckDifferentialDriveActuator>("pipuck_differential_drive");
+    m_pcDiffDriveSensor = GetSensor<CCI_PiPuckDifferentialDriveSensor>("pipuck_differential_drive");
     m_pcRadiosActuator = GetActuator<CCI_SimpleRadiosActuator>("simple_radios");
     m_pcRadiosSensor = GetSensor<CCI_SimpleRadiosSensor>("simple_radios");
     m_pcRangeFindersSensor = GetSensor<CCI_PiPuckRangefindersSensor>("pipuck_rangefinders");
@@ -80,6 +81,7 @@ int mirrored_mod(int x, int m) {
 }
 
 void CTensorSwarmCLAREBot::ControlStep() {
+    argos::LOG << "Control step" << std::endl;
     m_goal_progress_called = false;
 
     static constexpr size_t num_sensors = 4; // Define num_sensors as a static constexpr
@@ -202,6 +204,9 @@ CRadians CTensorSwarmCLAREBot::getActualAgentOrientation(){
     return zAngle;
 }
 
+
+
+
 tensorswarm::LaserScan CTensorSwarmCLAREBot::getLaser() const
 {
 //    const CCI_FootBotLidarSensor::TReadings& laserReadings = m_pcLaser->GetReadings();
@@ -230,10 +235,9 @@ geometry_msgs::Twist CTensorSwarmCLAREBot::getVelocities() const
 {
     geometry_msgs::Twist twist;
 
-    //Use agentobject wheelspeed and inter wheel distance to calculate linear and angular velocity
-    twist.linear.x = this->current_speed;
-    twist.angular.z = this->current_angular_speed;
-    argos::LOG << "Linear: " << twist.linear.x << " Angular: " << twist.angular.z << std::endl;
+    m_pcDiffDriveSensor->GetLeftVelocity();
+    twist.linear.x = (m_pcDiffDriveSensor->GetLeftVelocity() + m_pcDiffDriveSensor->GetRightVelocity())*WHEEL_RADIUS / 2.0;
+    twist.angular.z = (m_pcDiffDriveSensor->GetRightVelocity() - m_pcDiffDriveSensor->GetLeftVelocity())*WHEEL_RADIUS / (2.0*HALF_BASELINE);
     return twist;
 }
 

@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(tensorswarm)
 
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native -O3 -W -Wall -Wextra -pedantic")
 
 link_directories("/usr/local/lib/argos3")

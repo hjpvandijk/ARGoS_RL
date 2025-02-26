@@ -48,6 +48,28 @@ def observation_input(ob_space, batch_size=None, name='Ob'):
         input_x = tf.compat.v1.placeholder(shape=input_shape, dtype=ob_space.dtype, name=name)
         processed_x = tf.compat.v1.to_float(input_x)
         return input_x, processed_x
+    
+def state_input(st_space, batch_size=None, name='St'):
+    '''
+    Build state input with encoding depending on the
+    state space type
+    Params:
+
+    st_space: state space (should be one of gym.spaces)
+    batch_size: batch size for input (default is None, so that resulting input placeholder can take tensors with any batch size)
+    name: tensorflow variable name for input placeholder
+    returns: tuple (input_placeholder, processed_input_tensor)
+    '''
+    if isinstance(st_space, Discrete):
+        input_x  = tf.compat.v1.placeholder(shape=(batch_size,), dtype=tf.compat.v1.int32, name=name)
+        processed_x = tf.compat.v1.to_float(tf.compat.v1.one_hot(input_x, st_space.n))
+        return input_x, processed_x
+
+    elif isinstance(st_space, Box):
+        input_shape = (batch_size,) + st_space.shape
+        input_x = tf.compat.v1.placeholder(shape=input_shape, dtype=st_space.dtype, name=name)
+        processed_x = tf.compat.v1.to_float(input_x)
+        return input_x, processed_x
 
 def nature_cnn(unscaled_images, **conv_kwargs):
     """
@@ -63,9 +85,9 @@ def nature_cnn(unscaled_images, **conv_kwargs):
     return activ(fc(h3, 'fc1', nh=512, init_scale=np.sqrt(2)))
 
 class LnLstmPolicy(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False):
+    def __init__(self, sess, st_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False):
         nenv = nbatch // nsteps
-        X, processed_x = observation_input(ob_space, nbatch)
+        X, processed_x = state_input(st_space, nbatch)
         M = tf.compat.v1.placeholder(tf.compat.v1.float32, [nbatch]) #mask (done t-1)
         S = tf.compat.v1.placeholder(tf.compat.v1.float32, [nenv, nlstm*2]) #states
         self.pdtype = make_pdtype(ac_space)
@@ -98,10 +120,10 @@ class LnLstmPolicy(object):
 
 class LstmPolicy(object):
 
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False):
+    def __init__(self, sess, st_space, ac_space, nbatch, nsteps, nlstm=256, reuse=False):
         nenv = nbatch // nsteps
         self.pdtype = make_pdtype(ac_space)
-        X, processed_x = observation_input(ob_space, nbatch)
+        X, processed_x = state_input(st_space, nbatch)
 
         M = tf.compat.v1.placeholder(tf.compat.v1.float32, [nbatch]) #mask (done t-1)
         S = tf.compat.v1.placeholder(tf.compat.v1.float32, [nenv, nlstm*2]) #states
@@ -194,15 +216,15 @@ class MlpPolicy(object):
         self.value = value
 
 class RobotPolicy(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False, deterministic = False): #pylint: disable=W0613
+    def __init__(self, sess, st_space, ac_space, nbatch, nsteps, map_height, map_width, reuse=False, deterministic=False): #pylint: disable=W0613
         self.pdtype = make_pdtype(ac_space)
         with tf.compat.v1.variable_scope("model", reuse=reuse):
-            laser = tf.compat.v1.placeholder(shape=(None, 512, 3), dtype=tf.compat.v1.float32, name="laser")
-            rel_goal = tf.compat.v1.placeholder(shape=(None, 2), dtype=tf.compat.v1.float32, name="rel_goal")
+            laser = tf.compat.v1.placeholder(shape=(None, 4, 3), dtype=tf.compat.v1.float32, name="laser")
+            map = tf.compat.v1.placeholder(shape=(None, map_height, map_width), dtype=tf.compat.v1.float32, name="map")
             velocities = tf.compat.v1.placeholder(shape=(None, 2), dtype=tf.compat.v1.float32, name="velocities")
 
-            pi_net = self.net(laser, rel_goal, velocities)
-            vf_h2 = self.net(laser, rel_goal, velocities)
+            pi_net = self.net(laser, map, velocities)
+            vf_h2 = self.net(laser, map, velocities)
             vf = fc(vf_h2, 'vf', 1)[:,0]
 
             self.pd, self.pi = self.pdtype.pdfromlatent(pi_net, init_scale=0.01)
@@ -215,39 +237,53 @@ class RobotPolicy(object):
         self.initial_state = None
 
         self.laser = laser
-        self.rel_goal = rel_goal
+        self.map = map
         self.velocities = velocities
 
         self.vf = vf
 
-        def step(ob, *_args, **_kwargs):
-            lb = [o["laser"] for o in ob]
-            rb = [o["rel_goal"] for o in ob]
-            vb = [o["velocities"] for o in ob]
+        def step(st, *_args, **_kwargs):
+            lb = [o["laser"] for o in st]
+            rb = [o["map"] for o in st]
+            vb = [o["velocities"] for o in st]
 
             #print(rb)
 
             a, v, neglogp = sess.run([a0, vf, neglogp0],
-                                     {self.laser: lb, self.rel_goal: rb, self.velocities: vb})
+                                     {self.laser: lb, self.map: rb, self.velocities: vb})
             return a, v, self.initial_state, neglogp
 
-        def value(ob, *_args, **_kwargs):
-            lb = [o["laser"] for o in ob]
-            rb = [o["rel_goal"] for o in ob]
-            vb = [o["velocities"] for o in ob]
-            return sess.run(vf, {self.laser: lb, self.rel_goal: rb, self.velocities: vb})
+        def value(st, *_args, **_kwargs):
+            lb = [o["laser"] for o in st]
+            rb = [o["map"] for o in st]
+            vb = [o["velocities"] for o in st]
+            return sess.run(vf, {self.laser: lb, self.map: rb, self.velocities: vb})
 
         self.step = step
         self.value = value
 
-    def net(self, laser, rel_goal, velocities):
+    # def net(self, laser, rel_goal, velocities):
+    #     net = tf.compat.v1.layers.conv1d(laser, 32, 5, strides=2, activation=tf.compat.v1.nn.relu)
+    #     net = tf.compat.v1.layers.conv1d(net, 32, 3, strides=2, activation=tf.compat.v1.nn.relu)
+    #     net = tf.compat.v1.layers.flatten(net)
+    #     net = tf.compat.v1.layers.dense(net, 256, activation=tf.compat.v1.nn.relu)
+
+
+    #     net = tf.compat.v1.concat(axis=1, values=[rel_goal, velocities, net])
+    #     net = tf.compat.v1.layers.dense(net, 256, activation=tf.compat.v1.nn.relu)
+    #     net = tf.compat.v1.layers.dense(net, 128, activation=tf.compat.v1.nn.relu)
+    #     net = tf.compat.v1.layers.dense(net, 64, activation=tf.compat.v1.nn.relu)
+
+    #     return net
+    
+    def net(self, laser, map, velocities):
         net = tf.compat.v1.layers.conv1d(laser, 32, 5, strides=2, activation=tf.compat.v1.nn.relu)
         net = tf.compat.v1.layers.conv1d(net, 32, 3, strides=2, activation=tf.compat.v1.nn.relu)
         net = tf.compat.v1.layers.flatten(net)
         net = tf.compat.v1.layers.dense(net, 256, activation=tf.compat.v1.nn.relu)
 
-
-        net = tf.compat.v1.concat(axis=1, values=[rel_goal, velocities, net])
+        map_flat = tf.compat.v1.layers.flatten(map)
+        net = tf.compat.v1.concat(axis=1, values=[map_flat, velocities, net])
         net = tf.compat.v1.layers.dense(net, 256, activation=tf.compat.v1.nn.relu)
         net = tf.compat.v1.layers.dense(net, 128, activation=tf.compat.v1.nn.relu)
         net = tf.compat.v1.layers.dense(net, 64, activation=tf.compat.v1.nn.relu)

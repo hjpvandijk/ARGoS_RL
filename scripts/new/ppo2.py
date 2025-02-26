@@ -35,7 +35,7 @@ class AbstractEnvRunner(object):
         self.env = env
         self.model = model
         nenv = 1
-        self.obs = env.reset()
+        self.sts = env.reset()
         self.nsteps = nsteps
         self.states = model.initial_state
         self.dones = [False for _ in range(nenv)]
@@ -44,12 +44,12 @@ class AbstractEnvRunner(object):
         raise NotImplementedError
 
 class Model(object):
-    def __init__(self, policy, ob_space, ac_space, nbatch_act, nbatch_train,
+    def __init__(self, policy, st_space, ac_space, nbatch_act, nbatch_train,
                  nsteps, ent_coef, vf_coef, max_grad_norm, deterministic=False):
         sess = tf.compat.v1.get_default_session()
 
-        act_model = policy(sess, ob_space, ac_space, nbatch_act, 1, reuse=False, deterministic=deterministic)
-        train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True, deterministic=deterministic)
+        act_model = policy(sess, st_space, ac_space, nbatch_act, 1, reuse=False, deterministic=deterministic)
+        train_model = policy(sess, st_space, ac_space, nbatch_train, nsteps, reuse=True, deterministic=deterministic)
 
         A = train_model.pdtype.sample_placeholder([None])
         ADV = tf.compat.v1.placeholder(tf.compat.v1.float32, [None])
@@ -89,12 +89,12 @@ class Model(object):
         def reshape1d(arr):
             return np.reshape(arr, (len(arr)*len(arr[0])), 'F')
 
-        def reshape(ids, obs, returns, masks, actions, values, neglogpacs):
+        def reshape(ids, sts, returns, masks, actions, values, neglogpacs):
 
-            ib = np.asarray([[o["id"] for o in iobs] for iobs in obs])
-            lb = np.asarray([[o["laser"] for o in iobs] for iobs in obs])
-            rb = np.asarray([[o["rel_goal"] for o in iobs] for iobs in obs])
-            vb = np.asarray([[o["velocities"] for o in iobs] for iobs in obs])
+            ib = np.asarray([[o["id"] for o in ists] for ists in sts])
+            lb = np.asarray([[o["laser"] for o in ists] for ists in sts])
+            rb = np.asarray([[o["rel_goal"] for o in ists] for ists in sts])
+            vb = np.asarray([[o["velocities"] for o in ists] for ists in sts])
 
             lb = np.reshape(lb, (len(lb)*len(lb[0]), 512, 3), 'F')
 
@@ -116,10 +116,10 @@ class Model(object):
 
             return ib, lb, rb, vb, advs, returns, masks, actions, values, neglogpacs
 
-        def train(lr, cliprange, ids, obs, returns, masks, actions, values, neglogpacs, states=None):
+        def train(lr, cliprange, ids, sts, returns, masks, actions, values, neglogpacs, states=None):
 
 
-            ib, lb, rb, vb, advs, returns, masks, actions, values, neglogpacs = reshape(ids, obs, returns, masks, actions, values, neglogpacs)
+            ib, lb, rb, vb, advs, returns, masks, actions, values, neglogpacs = reshape(ids, sts, returns, masks, actions, values, neglogpacs)
 
             td_map = {train_model.laser:lb,train_model.rel_goal:rb, train_model.velocities:vb, A:actions, ADV:advs, R:returns, LR:lr,
                     CLIPRANGE:cliprange, OLDNEGLOGPAC:neglogpacs, OLDVPRED:values}
@@ -160,34 +160,34 @@ class Runner(AbstractEnvRunner):
         self.gamma = gamma
         self.env.set_model(self.model)
     def run(self):
-        mb_ids, mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[],[]
+        mb_ids, mb_sts, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[],[]
         mb_states = self.states
         epinfos = []
-        self.ids, self.obs = self.env.reset()
+        self.ids, self.sts = self.env.reset()
         self.dones = [False] * self.env.num_robots
         for _ in range(self.nsteps):
-            #print self.obs
-            actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
+            #print self.sts
+            actions, values, self.states, neglogpacs = self.model.step(self.sts, self.states, self.dones)
             mb_ids.append(self.ids)
-            mb_obs.append(self.obs)
+            mb_sts.append(self.sts)
             mb_actions.append(actions)
             mb_values.append(values)
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)
-            self.ids, self.obs, rewards, self.dones, infos = self.env.step(actions)
+            self.ids, self.sts, rewards, self.dones, infos = self.env.step(actions)
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
             mb_rewards.append(rewards)
         #batch of steps to batch of rollouts
-        #mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
+        #mb_sts = np.asarray(mb_sts, dtype=self.sts.dtype)
         mb_ids = np.asarray(mb_ids)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
         mb_actions = np.asarray(mb_actions)
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
         mb_dones = np.asarray(mb_dones, dtype=np.bool)
-        last_values = self.model.value(self.obs, self.states, self.dones)
+        last_values = self.model.value(self.sts, self.states, self.dones)
         #discount/bootstrap off value fn
         mb_returns = np.zeros_like(mb_rewards)
         mb_advs = np.zeros_like(mb_rewards)
@@ -202,9 +202,9 @@ class Runner(AbstractEnvRunner):
             delta = mb_rewards[t] + self.gamma * nextvalues * nextnonterminal - mb_values[t]
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
         mb_returns = mb_advs + mb_values
-        return mb_ids, mb_obs, sf01(mb_returns), sf01(mb_dones), sf01(mb_actions), sf01(mb_values), sf01(mb_neglogpacs), \
+        return mb_ids, mb_sts, sf01(mb_returns), sf01(mb_dones), sf01(mb_actions), sf01(mb_values), sf01(mb_neglogpacs), \
                 mb_states, epinfos
-# obs, returns, masks, actions, values, neglogpacs, states = runner.run()
+# sts, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
     swap and then flatten axes 0 and 1
@@ -222,7 +222,7 @@ def learn(policy, env, nsteps, total_timesteps, ent_coef, lr,
           vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95,
           log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
           save_interval=0, restore_path=None, deterministic=False):
-
+    print("Learning")
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
     if isinstance(cliprange, float): cliprange = constfn(cliprange)
@@ -234,14 +234,14 @@ def learn(policy, env, nsteps, total_timesteps, ent_coef, lr,
 
     nenvs = 1
     #nenvs = env.num_envs
-    ob_space = env.observation_space
+    st_space = env.state_space
     ac_space = env.action_space
     nbatch = nenvs * nsteps
     nbatch_train = nbatch // nminibatches
 
-    make_model = lambda : Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train,
+    make_model = lambda : Model(policy=policy, st_space=st_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train,
                                 nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
-                                max_grad_norm=max_grad_norm, deterministic=deterministic)
+                                max_grad_norm=max_grad_norm, deterministic=deterministic, map_height=env.map_height_cells, map_width=env.map_width_cells)
     if save_interval and logger.get_dir():
         import cloudpickle
         with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
@@ -256,14 +256,16 @@ def learn(policy, env, nsteps, total_timesteps, ent_coef, lr,
 
     nupdates = total_timesteps//nbatch
     assert(nupdates > 0)
+    print("nupdates: ", nupdates)
     for update in range(1, nupdates+1):
+        print("Update: ", update)
         assert nbatch % nminibatches == 0
         nbatch_train = nbatch // nminibatches
         tstart = time.time()
         frac = 1.0 - (update - 1.0) / nupdates
         lrnow = lr(frac)
         cliprangenow = cliprange(frac)
-        ids, obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run() #pylint: disable=E0632
+        ids, sts, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run() #pylint: disable=E0632
         epinfobuf.extend(epinfos)
         mblossvals = []
 
@@ -278,7 +280,7 @@ def learn(policy, env, nsteps, total_timesteps, ent_coef, lr,
                 for start in range(0, nbatch, nbatch_train):
                     end = start + nbatch_train
                     mbinds = inds[start:end]
-                    mblossvals.append(model.train(lrnow, cliprangenow, ids[mbinds], [obs[i] for i in mbinds], returns[mbinds],
+                    mblossvals.append(model.train(lrnow, cliprangenow, ids[mbinds], [sts[i] for i in mbinds], returns[mbinds],
                                       masks[mbinds], actions[mbinds], values[mbinds],
                                       neglogpacs[mbinds]))
         else: # recurrent version
@@ -293,10 +295,10 @@ def learn(policy, env, nsteps, total_timesteps, ent_coef, lr,
                     end = start + envsperbatch
                     mbenvinds = envinds[start:end]
                     mbflatinds = flatinds[mbenvinds].ravel()
-                    slices = (arr[mbflatinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
+                    slices = (arr[mbflatinds] for arr in (sts, returns, masks, actions, values, neglogpacs))
                     mbstates = states[mbenvinds]
                     mblossvals.append(model.train(lrnow, cliprangenow,
-                                      [obs[i] for i in mbinds], returns[mbflatinds], masks[mbflatinds], actions[mbflatinds],
+                                      [sts[i] for i in mbinds], returns[mbflatinds], masks[mbflatinds], actions[mbflatinds],
                                       values[mbflatinds], neglogpacs[mbflatinds], mbstates))
 
         lossvals = np.mean(mblossvals, axis=0)

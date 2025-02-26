@@ -80,7 +80,7 @@ class ArgosEnvironment(Environment):
         :param start_poses: The desired start poses of the robots.
         :param goal_poses: The desired goal poses of the robots.
         """
-        self.service = rospy.ServiceProxy('AIService', AIService)
+        self.service = rospy.ServiceProxy('AICLAREService', AICLAREService)
 
         self.num_robots = len(start_poses)
 

@@ -73,13 +73,13 @@ class ArgosEnvironment(gym.Env):
     """A tensorforce environment for the Argos robotics simulator.
 
     """
-    def __init__(self, start_poses, goal_poses, service_name = 'AIService'):
+    def __init__(self, start_poses, goal_poses, service_name = 'AICLAREService', local_map_height_cells=500, local_map_width_cells=500):
         """The length of the start and end poses must match and determine the number of robots.
 
         :param start_poses: The desired start poses of the robots.
         :param goal_poses: The desired goal poses of the robots.
         """
-        self.service = rospy.ServiceProxy(service_name, AIService)
+        self.service = rospy.ServiceProxy(service_name, AICLAREService)
 
         self.num_robots = len(start_poses)
 
@@ -94,14 +94,16 @@ class ArgosEnvironment(gym.Env):
 
         self.num_envs = 1
         self.action_space = spaces.Box(low=-1, high=1, shape=(2,))
-        self.observation_space = spaces.Box(low=-10, high=10, shape=(512+2+2,))
+        # self.observation_space = spaces.Box(low=-10, high=10, shape=(512+2+2,))
+        self.state_space = spaces.Box(low=-10, high=10, shape=((local_map_height_cells*local_map_width_cells)+2+2,))
         # self.observation_space = dict(laser=dict(type='float', shape=(512, 3,)),
         #                               velocities=dict(type='float', shape=(2,)),
         #                               rel_goal=dict(type='float', shape=(2,)),
         #                               id=dict(type='int', shape=(1,)))
 
-        self.theta = [0.0]*self.num_robots
-        self.dist = [0.0]*self.num_robots
+        # self.theta = [0.0]*self.num_robots
+        # self.dist = [0.0]*self.num_robots
+        self.prev_map = None 
 
     def observation_to_dict(self, observations, init=False):
         """ Extracts a single observation from a list of  observations
@@ -154,6 +156,54 @@ class ArgosEnvironment(gym.Env):
         #return relpol
         #return np.hstack((laser_stack, vel_stack, rel_goal_stack))
 
+    def state_to_dict(self, states, init=False):
+        """ Extracts a single states from a list of states
+            from the robots and converts it to a dictionary consumable
+            by the neural net.
+
+        :param states: A list of states from the robots.
+        :param init: If static data should be initialized for the very first
+                    operation after a reset.
+        :return: Returns a dictionary of the states belonging to the
+                specified robot.
+        """
+
+        dict_stack = []
+
+        if init:
+            for index in range(self.num_robots):
+                values = np.asarray([p.value for p in states[index].laser_scan.laser_rays])
+                self.prev_lasers[index] = values
+                self.prev_prev_lasers[index] = values
+
+        for idx in range(self.num_robots):
+            st = states[idx]
+            goal = self.goal_poses[idx]
+            values = np.asarray([p.value for p in st.laser_scan.laser_rays])
+
+            laser = np.vstack((values,
+                            self.prev_lasers[idx],
+                            self.prev_prev_lasers[idx]))
+            self.prev_prev_lasers[idx] = self.prev_lasers[idx]
+            self.prev_lasers[idx] = values
+            laser = np.swapaxes(laser, 1, 0)
+
+            assert laser.shape == (4, 3)
+            
+            vel = np.asarray([st.twist.linear.x, st.twist.angular.z])
+
+            # Get the map
+            map_values = np.asarray(st.map.data, dtype=np.float32)
+            map = np.reshape(map_values, (st.map.height, st.map.width))
+            assert map.shape == (st.map.height, st.map.width)
+
+            dict_stack.append({'laser': laser,
+                            'velocities': vel,
+                            'map': map,
+                            'id': [idx, -idx]})
+
+        return dict_stack
+
     def action_to_twist(self, actions):
         """ Converts and action to ROS twist.
 
@@ -201,7 +251,7 @@ class ArgosEnvironment(gym.Env):
 
         self.current_response = response
 
-        return range(0, self.num_robots), self.observation_to_dict(response.observations), \
+        return range(0, self.num_robots), self.state_to_dict(response.states), \
                np.asarray(response.rewards), \
                np.asarray(response.done), \
                []
@@ -221,4 +271,4 @@ class ArgosEnvironment(gym.Env):
 
         self.current_response = response
 
-        return range(0, self.num_robots), self.observation_to_dict(response.observations, True)
+        return range(0, self.num_robots), self.state_to_dict(response.states, True)

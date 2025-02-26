@@ -9,4 +9,4 @@ argos3 -c src/tensorswarm/argos_worlds/office_config.argos &
 argos3 -c src/tensorswarm/argos_worlds/office_config.argos &
 argos3 -c src/tensorswarm/argos_worlds/office_config.argos &
 
-python3 src/tensorswarm/scripts/new/RunExperimentLCurve.py
+python3 src/tensorswarm/scriptsKIL/new/RunExperimentCLARE.py

@@ -36,7 +36,7 @@ class ArgosMultiProcessEnvironment(gym.Env):
     """A tensorforce environment for the Argos robotics simulator.
 
     """
-    def __init__(self, start_poses, goal_poses):
+    def __init__(self, start_poses, goal_poses, local_map_height_cells, local_map_width_cells):
         """The length of the start and end poses must match and determine the number of robots.
 
         :param start_poses: The desired start poses of the robots.
@@ -49,34 +49,36 @@ class ArgosMultiProcessEnvironment(gym.Env):
 
         self.num_envs = 1
         self.action_space = spaces.Box(low=-1, high=1, shape=(2,))
-        self.observation_space = spaces.Box(low=-10, high=10, shape=(512+2+2,))
+        # self.observation_space = spaces.Box(low=-10, high=10, shape=(512+2+2,))
+        self.state_space = spaces.Box(low=-10, high=10, shape=((local_map_height_cells*local_map_width_cells)+2+2,))
         # self.observation_space = dict(laser=dict(type='float', shape=(512, 3,)),
         #                               velocities=dict(type='float', shape=(2,)),
         #                               rel_goal=dict(type='float', shape=(2,)),
         #                               id=dict(type='int', shape=(1,)))
-
+        self.map_height_cells = local_map_height_cells
+        self.map_width_cells = local_map_width_cells
         self.ep_len_counter = 0
 
         self.num_robots = len(start_poses)*4
 
         self.aq1 = Queue()
-        self.ob1 = Queue()
-        self.p1 = Process(target=self.proc, args=('ai0', start_poses, goal_poses, self.aq1, self.ob1))
+        self.st1 = Queue()
+        self.p1 = Process(target=self.proc, args=('ai0', start_poses, goal_poses, self.aq1, self.st1, local_map_height_cells, local_map_width_cells))
         self.p1.start()
 
         self.aq2 = Queue()
-        self.ob2 = Queue()
-        self.p2 = Process(target=self.proc, args=('ai1', start_poses, goal_poses, self.aq2, self.ob2))
+        self.st2 = Queue()
+        self.p2 = Process(target=self.proc, args=('ai1', start_poses, goal_poses, self.aq2, self.st2, local_map_height_cells, local_map_width_cells))
         self.p2.start()
 
         self.aq3 = Queue()
-        self.ob3 = Queue()
-        self.p3 = Process(target=self.proc, args=('ai2', start_poses, goal_poses, self.aq3, self.ob3))
+        self.st3 = Queue()
+        self.p3 = Process(target=self.proc, args=('ai2', start_poses, goal_poses, self.aq3, self.st3, local_map_height_cells, local_map_width_cells))
         self.p3.start()
 
         self.aq4 = Queue()
-        self.ob4 = Queue()
-        self.p4 = Process(target=self.proc, args=('ai3', start_poses, goal_poses, self.aq4, self.ob4))
+        self.st4 = Queue()
+        self.p4 = Process(target=self.proc, args=('ai3', start_poses, goal_poses, self.aq4, self.st4, local_map_height_cells, local_map_width_cells))
         self.p4.start()
 
         self.model = None
@@ -84,14 +86,14 @@ class ArgosMultiProcessEnvironment(gym.Env):
     def set_model(self, model):
         self.model = model
 
-    def proc(self, name, start_poses, goal_poses, action_q, obs_q):
-        env = ArgosEnvironment(start_poses, goal_poses, name)
+    def proc(self, name, start_poses, goal_poses, action_q, sts_q, local_map_height_cells, local_map_width_cells):
+        env = ArgosEnvironment(start_poses, goal_poses, name, local_map_height_cells, local_map_width_cells)
         while True:
             action = action_q.get()
             if len(action) == 0:
-                obs_q.put(env.reset())
+                sts_q.put(env.reset())
             else:
-                obs_q.put(env.step(action))
+                sts_q.put(env.step(action))
 
     def chunk(self, xs, n):
         '''Split the list, xs, into n chunks'''
@@ -105,7 +107,7 @@ class ArgosMultiProcessEnvironment(gym.Env):
     def step(self, actions):
         assert(len(actions) % 4 == 0)
 
-        ids, obs, rews, dones = [], [], [], []
+        ids, sts, rews, dones = [], [], [], []
 
         acs = self.chunk(actions, 4)
 
@@ -115,35 +117,35 @@ class ArgosMultiProcessEnvironment(gym.Env):
         self.aq4.put(acs[3])
 
 
-        id, ob, rew, done, _ = self.ob1.get()
+        id, st, rew, done, _ = self.st1.get()
         ids.extend(id)
-        obs.extend(ob)
+        sts.extend(st)
         rews.extend(rew)
         dones.extend(done)
 
-        id, ob, rew, done, _ = self.ob2.get()
+        id, st, rew, done, _ = self.st2.get()
         ids.extend(id)
-        obs.extend(ob)
+        sts.extend(st)
         rews.extend(rew)
         dones.extend(done)
 
-        id, ob, rew, done, _ = self.ob3.get()
+        id, st, rew, done, _ = self.st3.get()
         ids.extend(id)
-        obs.extend(ob)
+        sts.extend(st)
         rews.extend(rew)
         dones.extend(done)
 
-        id, ob, rew, done, _ = self.ob4.get()
+        id, st, rew, done, _ = self.st4.get()
         ids.extend(id)
-        obs.extend(ob)
+        sts.extend(st)
         rews.extend(rew)
         dones.extend(done)
 
-        #return range(0, self.num_robots), obs, rews, dones, []
+        #return range(0, self.num_robots), ob`s, rews, dones, []
 
         infos = [{"episode": {"l": self.ep_len_counter, "r": np.mean(rews)}}]
         self.ep_len_counter = self.ep_len_counter + 1
-        return range(0, self.num_robots), obs, rews, dones, infos
+        return range(0, self.num_robots), sts, rews, dones, infos
 
     def reset(self):
 
@@ -154,18 +156,18 @@ class ArgosMultiProcessEnvironment(gym.Env):
         self.aq4.put([])
 
         ids, obs = [], []
-        id, ob = self.ob1.get()
+        id, st = self.st1.get()
         ids.extend(id)
-        obs.extend(ob)
-        id, ob = self.ob2.get()
+        obs.extend(st)
+        id, st = self.st2.get()
         ids.extend(id)
-        obs.extend(ob)
-        id, ob = self.ob3.get()
+        obs.extend(st)
+        id, st = self.st3.get()
         ids.extend(id)
-        obs.extend(ob)
-        id, ob = self.ob4.get()
+        obs.extend(st)
+        id, st = self.st4.get()
         ids.extend(id)
-        obs.extend(ob)
+        obs.extend(st)
 
 
         self.ep_len_counter = 0
